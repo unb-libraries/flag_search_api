@@ -102,14 +102,13 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface {
    * Helper function for defining our custom fields.
    */
   protected function getFieldsDefinition() {
-    $config = $this->configuration['flag_index'];
     $fields = [];
     $flag_service = \Drupal::service('flag');
     //this is for deprecated function support
     $flags = (method_exists($flag_service,'getAllFlags')) ? $flag_service->getAllFlags() : $flag_service->getFlags();
-    foreach($config as $flag){
-      $label = $flags[$flag]->get('label');
-      $fields['flag_'. $flag] = array(
+    foreach($flags as $flag){
+      $label =$flag->get('label');
+      $fields['flag_'. $flag->id()] = array(
         'label' => $label,
         'description' => $label,
         'type' => 'integer',
