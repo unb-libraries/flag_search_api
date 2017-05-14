@@ -8,10 +8,10 @@
 namespace Drupal\flag_search_api\Plugin\search_api\processor;
 
 use Drupal\Core\Plugin\PluginFormInterface;
-use Drupal\Core\TypedData\DataDefinition;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\search_api\Datasource\DatasourceInterface;
 use Drupal\search_api\Processor\ProcessorPluginBase;
+use Drupal\search_api\Processor\ProcessorProperty;
 
 /**
  * @SearchApiProcessor(
@@ -38,15 +38,9 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface {
    * {@inheritdoc}
    */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
-    $default_flags = FALSE;
     $options = [];
 
-    if (isset($this->configuration['flag_index'])) {
-      $default_flags = $this->configuration['flag_index'];
-    }
-    $flag_service = \Drupal::service('flag');
-    //this is for deprecated function support
-    $flags = (method_exists($flag_service,'getAllFlags')) ? $flag_service->getAllFlags() : $flag_service->getFlags();
+    $flags = \Drupal::service('flag')->getAllFlags();
     foreach($flags as $flag){
       $options[$flag->get('id')] = $flag->get('label');
     }
@@ -56,7 +50,7 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface {
       '#title' => $this->t('Enable these flags on this index'),
       '#description' => $this->t('This will index IDs from users that flagged this content'),
       '#options' => $options,
-      '#default_value' => $default_flags,
+      '#default_value' => isset($this->configuration['flag_index']) ? $this->configuration['flag_index'] : [],
     );
 
     return $form;
@@ -77,7 +71,6 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface {
    * {@inheritdoc}
    */
   public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
-    // Sanitize the storage for the "exclude_fields" setting.
     $this->setConfiguration($form_state->getValues());
   }
   /**
@@ -92,7 +85,7 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface {
       $fields = $this->getFieldsDefinition();
 
       foreach ($fields as $field_id => $field_definition) {
-        $properties[$field_id] = new DataDefinition($field_definition);
+        $properties[$field_id] = new ProcessorProperty($field_definition);
       }
     }
     return $properties;
@@ -102,18 +95,15 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface {
    * Helper function for defining our custom fields.
    */
   protected function getFieldsDefinition() {
-    $config = isset($this->configuration['settings']['flag_index']) && !empty($this->configuration['settings']['flag_index']) && empty($this->configuration['flag_index'])? $this->configuration['settings']['flag_index']: $this->configuration['flag_index'];
+    $config = $this->configuration['flag_index'];
     $fields = [];
-    $flag_service = \Drupal::service('flag');
-    //this is for deprecated function support
-    $flags = (method_exists($flag_service,'getAllFlags')) ? $flag_service->getAllFlags() : $flag_service->getFlags();
     foreach($config as $flag){
-      $label = $flags[$flag]->get('label');
+      $label = \Drupal::service('flag')->getFlagById($flag)->get('label');
       $fields['flag_'. $flag] = array(
         'label' => $label,
         'description' => $label,
         'type' => 'integer',
-        'prefix' => 't',
+        'processor_id' => $this->getPluginId(),
       );
     }
     return $fields;
@@ -126,8 +116,7 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface {
   public function preprocessIndexItems(array $items) {
     $config = $this->configuration['flag_index'];
     $flag_service = \Drupal::service('flag');
-    //this is for deprecated function support
-    $flags = (method_exists($flag_service,'getAllFlags')) ? $flag_service->getAllFlags() : $flag_service->getFlags();
+    $flags = $flag_service->getAllFlags();
     foreach ($items as $item) {
       $entity = $item->getOriginalObject()->getValue();
       foreach($config as $flag_id){
