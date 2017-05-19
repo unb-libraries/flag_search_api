@@ -1,17 +1,14 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: Dalibor Stojaković
- * Date: 06.02.17.
- * Time: 11:06
- */
 namespace Drupal\flag_search_api\Plugin\search_api\processor;
 
+use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Plugin\PluginFormInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\flag\FlagService;
 use Drupal\search_api\Datasource\DatasourceInterface;
 use Drupal\search_api\Processor\ProcessorPluginBase;
 use Drupal\search_api\Processor\ProcessorProperty;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * @SearchApiProcessor(
@@ -25,7 +22,36 @@ use Drupal\search_api\Processor\ProcessorProperty;
  *   }
  * )
  */
-class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface {
+class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface, ContainerFactoryPluginInterface {
+
+  /**
+   * Flag service
+   *
+   * @var \Drupal\flag\FlagInterface
+   */
+  protected $flagService;
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+    return new static(
+      $configuration,
+      $plugin_id,
+      $plugin_definition,
+      $container->get('flag')
+    );
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function __construct(array $configuration, $plugin_id, array $plugin_definition,  FlagService $flagService) {
+    parent::__construct($configuration, $plugin_id, $plugin_definition);
+    $this->flagService = $flagService;
+  }
+
+
   /**
    * {@inheritdoc}
    */
@@ -40,7 +66,7 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface {
   public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
     $options = [];
 
-    $flags = \Drupal::service('flag')->getAllFlags();
+    $flags = $this->flagService->getAllFlags();
     foreach($flags as $flag){
       $options[$flag->get('id')] = $flag->get('label');
     }
@@ -98,7 +124,7 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface {
     $config = $this->configuration['flag_index'];
     $fields = [];
     foreach($config as $flag){
-      $label = \Drupal::service('flag')->getFlagById($flag)->get('label');
+      $label = $this->flagService->getFlagById($flag)->get('label');
       $fields['flag_'. $flag] = array(
         'label' => $label,
         'description' => $label,
@@ -115,14 +141,13 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface {
    */
   public function preprocessIndexItems(array $items) {
     $config = $this->configuration['flag_index'];
-    $flag_service = \Drupal::service('flag');
-    $flags = $flag_service->getAllFlags();
+    $flags = $this->flagService->getAllFlags();
     foreach ($items as $item) {
       $entity = $item->getOriginalObject()->getValue();
       foreach($config as $flag_id){
         $fields = $this->getFieldsHelper()->filterForPropertyPath($item->getFields(), NULL,'flag_' . $flag_id);
         foreach ($fields as $flag_field) {
-          $users = $flag_service->getFlaggingUsers($entity,$flags[$flag_id]);
+          $users = $this->flagService->getFlaggingUsers($entity,$flags[$flag_id]);
           foreach($users as $user){
             $flag_field->addValue($user->id());
           }
