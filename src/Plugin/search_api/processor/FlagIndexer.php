@@ -1,6 +1,7 @@
 <?php
 namespace Drupal\flag_search_api\Plugin\search_api\processor;
 
+use Drupal\Core\Messenger\Messenger;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Plugin\PluginFormInterface;
 use Drupal\Core\Form\FormStateInterface;
@@ -8,6 +9,8 @@ use Drupal\flag\FlagService;
 use Drupal\search_api\Datasource\DatasourceInterface;
 use Drupal\search_api\Processor\ProcessorPluginBase;
 use Drupal\search_api\Processor\ProcessorProperty;
+use Drupal\search_api\SearchApiException;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\search_api\Item\ItemInterface;
 
@@ -15,8 +18,8 @@ use Drupal\search_api\Item\ItemInterface;
  * @SearchApiProcessor(
  *   id = "flag_indexer",
  *   label = @Translation("Flag indexing"),
- *   description = @Translation("Switching on will enable indexing flags on content"),
- *   stages = {
+ *   description = @Translation("Switching on will enable indexing flags on
+ *   content"), stages = {
  *     "add_properties" = 1,
  *     "pre_index_save" = -10
  *   }
@@ -25,11 +28,18 @@ use Drupal\search_api\Item\ItemInterface;
 class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface, ContainerFactoryPluginInterface {
 
   /**
-   * Flag service
+   * Flag service.
    *
    * @var \Drupal\flag\FlagInterface
    */
   protected $flagService;
+
+  /**
+   * Logger.
+   *
+   * @var \Psr\Log\LoggerInterface
+   */
+  protected $logger;
 
   /**
    * {@inheritdoc}
@@ -39,16 +49,18 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface, Co
       $configuration,
       $plugin_id,
       $plugin_definition,
-      $container->get('flag')
+      $container->get('flag'),
+      $container->get('logger.factory')->get('flag_search_api')
     );
   }
 
   /**
    * {@inheritdoc}
    */
-  public function __construct(array $configuration, $plugin_id, array $plugin_definition,  FlagService $flagService) {
+  public function __construct(array $configuration, $plugin_id, array $plugin_definition,  FlagService $flagService, LoggerInterface $logger) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->flagService = $flagService;
+    $this->logger = $logger;
   }
 
 
@@ -60,6 +72,7 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface, Co
       'flag_index' => array(),
     );
   }
+
   /**
    * {@inheritdoc}
    */
@@ -99,9 +112,9 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface, Co
   public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
     $this->setConfiguration($form_state->getValues());
   }
+
   /**
    * {@inheritdoc}
-   *
    */
   public function getPropertyDefinitions(DatasourceInterface $datasource = NULL) {
     $properties = array();
@@ -142,23 +155,33 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface, Co
   public function addFieldValues(ItemInterface $item) {
     $config = $this->configuration['flag_index'];
     $flags = $this->flagService->getAllFlags();
-    $entity = $item->getOriginalObject()->getValue();
-    foreach($config as $flag_id){
-      $fields = $this->getFieldsHelper()->filterForPropertyPath($item->getFields(), NULL,'flag_' . $flag_id);
-      foreach ($fields as $flag_field) {
-        $users = $this->flagService->getFlaggingUsers($entity,$flags[$flag_id]);
-        foreach($users as $user){
-          $flag_field->addValue($user->id());
+    try{
+      $entity = $item->getOriginalObject()->getValue();
+      foreach($config as $flag_id){
+        $fields = $this->getFieldsHelper()->filterForPropertyPath($item->getFields(), NULL,'flag_' . $flag_id);
+        foreach ($fields as $flag_field) {
+          $users = $this->flagService->getFlaggingUsers($entity,$flags[$flag_id]);
+          /** @var \Drupal\user\Entity\User $user */
+          foreach($users as $user){
+            $flag_field->addValue($user->id());
+          }
         }
       }
+    }catch (SearchApiException $exception){
+      $this->logger->error($exception->getMessage());
     }
   }
+
   /**
    * {@inheritdoc}
    */
   public function preIndexSave() {
     foreach ($this->getFieldsDefinition() as $field_id => $field_definition) {
-      $this->ensureField(NULL, $field_id, $field_definition['type']);
+      try{
+        $this->ensureField(NULL, $field_id, $field_definition['type']);
+      }catch (SearchApiException $exception){
+        $this->logger->error($exception->getMessage());
+      }
     }
   }
 
