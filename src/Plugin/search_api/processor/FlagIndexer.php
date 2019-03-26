@@ -9,6 +9,7 @@ use Drupal\search_api\Datasource\DatasourceInterface;
 use Drupal\search_api\Processor\ProcessorPluginBase;
 use Drupal\search_api\Processor\ProcessorProperty;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\search_api\Item\ItemInterface;
 
 /**
  * @SearchApiProcessor(
@@ -17,8 +18,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   description = @Translation("Switching on will enable indexing flags on content"),
  *   stages = {
  *     "add_properties" = 1,
- *     "pre_index_save" = -10,
- *     "preprocess_index" = -30
+ *     "pre_index_save" = -10
  *   }
  * )
  */
@@ -139,18 +139,16 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface, Co
   /**
    * {@inheritdoc}
    */
-  public function preprocessIndexItems(array $items) {
+  public function addFieldValues(ItemInterface $item) {
     $config = $this->configuration['flag_index'];
     $flags = $this->flagService->getAllFlags();
-    foreach ($items as $item) {
-      $entity = $item->getOriginalObject()->getValue();
-      foreach($config as $flag_id){
-        $fields = $this->getFieldsHelper()->filterForPropertyPath($item->getFields(), NULL,'flag_' . $flag_id);
-        foreach ($fields as $flag_field) {
-          $users = $this->flagService->getFlaggingUsers($entity,$flags[$flag_id]);
-          foreach($users as $user){
-            $flag_field->addValue($user->id());
-          }
+    $entity = $item->getOriginalObject()->getValue();
+    foreach($config as $flag_id){
+      $fields = $this->getFieldsHelper()->filterForPropertyPath($item->getFields(), NULL,'flag_' . $flag_id);
+      foreach ($fields as $flag_field) {
+        $users = $this->flagService->getFlaggingUsers($entity,$flags[$flag_id]);
+        foreach($users as $user){
+          $flag_field->addValue($user->id());
         }
       }
     }
