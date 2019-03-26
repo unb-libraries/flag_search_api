@@ -9,6 +9,7 @@ use Drupal\Core\Form\FormStateInterface;
  * Implements a FlagSearchApiConfig form.
  */
 class FlagSearchApiConfigForm extends ConfigFormBase {
+
   /**
    * {@inheritdoc}
    */
@@ -24,7 +25,7 @@ class FlagSearchApiConfigForm extends ConfigFormBase {
   }
 
   /**
-   *  Flag Search Api configuration form.
+   * Flag Search Api configuration form.
    *
    * {@inheritdoc}
    */
@@ -43,7 +44,6 @@ class FlagSearchApiConfigForm extends ConfigFormBase {
       '#description' => t('Enable or disable Reindexing items on flagging action.'),
     );
 
-
     $form['submit'] = array(
       '#type' => 'submit',
       '#value' => t('Save'),
@@ -53,16 +53,12 @@ class FlagSearchApiConfigForm extends ConfigFormBase {
   }
 
   /**
-   *  Flag Search Api configuration form submit handler.
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
     $config = $this->configFactory->getEditable('flag_search_api.settings');
-
     $config->set('reindex_on_flagging', $form_state->getValue('reindex_on_flagging'));
-
     $config->save();
-
     parent::submitForm($form, $form_state);
   }
 

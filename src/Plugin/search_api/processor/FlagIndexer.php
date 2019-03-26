@@ -1,7 +1,7 @@
 <?php
+
 namespace Drupal\flag_search_api\Plugin\search_api\processor;
 
-use Drupal\Core\Messenger\Messenger;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Plugin\PluginFormInterface;
 use Drupal\Core\Form\FormStateInterface;
@@ -15,6 +15,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\search_api\Item\ItemInterface;
 
 /**
+ * Search API Processor for indexing flags.
+ *
  * @SearchApiProcessor(
  *   id = "flag_indexer",
  *   label = @Translation("Flag indexing"),
@@ -57,12 +59,11 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface, Co
   /**
    * {@inheritdoc}
    */
-  public function __construct(array $configuration, $plugin_id, array $plugin_definition,  FlagService $flagService, LoggerInterface $logger) {
+  public function __construct(array $configuration, $plugin_id, array $plugin_definition, FlagService $flagService, LoggerInterface $logger) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->flagService = $flagService;
     $this->logger = $logger;
   }
-
 
   /**
    * {@inheritdoc}
@@ -80,7 +81,7 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface, Co
     $options = [];
 
     $flags = $this->flagService->getAllFlags();
-    foreach($flags as $flag){
+    foreach ($flags as $flag) {
       $options[$flag->get('id')] = $flag->get('label');
     }
 
@@ -136,9 +137,9 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface, Co
   protected function getFieldsDefinition() {
     $config = $this->configuration['flag_index'];
     $fields = [];
-    foreach($config as $flag){
+    foreach ($config as $flag) {
       $label = $this->flagService->getFlagById($flag)->get('label');
-      $fields['flag_'. $flag] = array(
+      $fields['flag_' . $flag] = array(
         'label' => $label,
         'description' => $label,
         'type' => 'integer',
@@ -148,28 +149,31 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface, Co
     return $fields;
   }
 
-
   /**
    * {@inheritdoc}
    */
   public function addFieldValues(ItemInterface $item) {
     $config = $this->configuration['flag_index'];
     $flags = $this->flagService->getAllFlags();
-    try{
+    try {
       $entity = $item->getOriginalObject()->getValue();
-      foreach($config as $flag_id){
-        $fields = $this->getFieldsHelper()->filterForPropertyPath($item->getFields(), NULL,'flag_' . $flag_id);
+      foreach ($config as $flag_id) {
+        $fields = $this
+          ->getFieldsHelper()
+          ->filterForPropertyPath($item->getFields(), NULL, 'flag_' . $flag_id);
         foreach ($fields as $flag_field) {
-          $users = $this->flagService->getFlaggingUsers($entity,$flags[$flag_id]);
+          $users = $this->flagService->getFlaggingUsers($entity, $flags[$flag_id]);
           /** @var \Drupal\user\Entity\User $user */
-          foreach($users as $user){
+          foreach ($users as $user) {
             $flag_field->addValue($user->id());
           }
         }
       }
-    }catch (SearchApiException $exception){
+    }
+    catch (SearchApiException $exception) {
       $this->logger->error($exception->getMessage());
     }
+
   }
 
   /**
@@ -177,9 +181,10 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface, Co
    */
   public function preIndexSave() {
     foreach ($this->getFieldsDefinition() as $field_id => $field_definition) {
-      try{
+      try {
         $this->ensureField(NULL, $field_id, $field_definition['type']);
-      }catch (SearchApiException $exception){
+      }
+      catch (SearchApiException $exception) {
         $this->logger->error($exception->getMessage());
       }
     }

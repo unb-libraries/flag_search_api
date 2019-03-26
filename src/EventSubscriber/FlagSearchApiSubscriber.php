@@ -2,7 +2,6 @@
 
 namespace Drupal\flag_search_api\EventSubscriber;
 
-use Drupal\flag\Entity\Flagging;
 use Drupal\flag\Event\FlaggingEvent;
 use Drupal\flag\Event\UnflaggingEvent;
 use Drupal\flag_search_api\FlagSearchApiReindexService;
@@ -23,7 +22,8 @@ class FlagSearchApiSubscriber implements EventSubscriberInterface {
   /**
    * Constructs a new FlagSearchApiSubscriber object.
    *
-   * @param FlagSearchApiReindexService $flag_search_api_reindex_service
+   * @param \Drupal\flag_search_api\FlagSearchApiReindexService $flag_search_api_reindex_service
+   *   FlagSearchApiReindexService.
    */
   public function __construct(FlagSearchApiReindexService $flag_search_api_reindex_service) {
     $this->flagSearchApiReindex = $flag_search_api_reindex_service;
@@ -32,7 +32,7 @@ class FlagSearchApiSubscriber implements EventSubscriberInterface {
   /**
    * {@inheritdoc}
    */
-  static function getSubscribedEvents() {
+  public static function getSubscribedEvents() {
     $events['flag.entity_flagged'] = ['flagEntityFlagged'];
     $events['flag.entity_unflagged'] = ['flagEntityUnflagged'];
 
@@ -40,24 +40,25 @@ class FlagSearchApiSubscriber implements EventSubscriberInterface {
   }
 
   /**
-   * This method is called whenever the flag.entity_flagged event is
-   * dispatched.
+   * Method is called whenever the flag.entity_flagged event is dispatched.
    *
-   * @param FlaggingEvent $event
+   * @param \Drupal\flag\Event\FlaggingEvent $event
+   *   Event.
    */
   public function flagEntityFlagged(FlaggingEvent $event) {
     $this->flagSearchApiReindex->reindexItem($event->getFlagging());
   }
+
   /**
-   * This method is called whenever the flag.entity_unflagged event is
-   * dispatched.
+   * Method is called whenever the flag.entity_unflagged event is dispatched.
    *
-   * @param UnflaggingEvent $event
+   * @param \Drupal\flag\Event\UnflaggingEvent $event
+   *   Event.
    */
   public function flagEntityUnflagged(UnflaggingEvent $event) {
     $flaggings = $event->getFlaggings();
-    /** @var Flagging $flagging */
-    foreach($flaggings as $flagging){
+    /** @var \Drupal\flag\FlaggingInterface $flagging */
+    foreach ($flaggings as $flagging) {
       $this->flagSearchApiReindex->reindexItem($flagging);
     }
   }

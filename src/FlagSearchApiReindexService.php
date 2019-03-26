@@ -21,21 +21,24 @@ class FlagSearchApiReindexService implements FlagSearchApiReindexServiceInterfac
   /**
    * FlagSearchApiReindexService constructor.
    *
-   * @param ConfigFactoryInterface $config_factory
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
+   *   ConfigFactory.
    */
   public function __construct(ConfigFactoryInterface $config_factory) {
     $this->configFactory = $config_factory;
   }
 
   /**
-   * Reindex Item
+   * Reindex Item.
    *
    * @param \Drupal\flag\FlaggingInterface $entity
+   *   Flagging.
    */
-  public function reindexItem(FlaggingInterface $entity){
+  public function reindexItem(FlaggingInterface $entity) {
     $reindex_on_flagging = $this->configFactory->get('flag_search_api.settings')->get('reindex_on_flagging');
-    if($reindex_on_flagging){
+    if ($reindex_on_flagging) {
       $datasource_id = 'entity:' . $entity->getFlaggableType();
+      /** @var \Drupal\Core\Entity\ContentEntityInterface $content_flagged */
       $content_flagged = $entity->getFlaggable();
       $indexes = ContentEntity::getIndexesForEntity($content_flagged);
 
