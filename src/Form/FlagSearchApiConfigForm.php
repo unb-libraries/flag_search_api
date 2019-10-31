@@ -41,7 +41,7 @@ class FlagSearchApiConfigForm extends ConfigFormBase {
       '#type' => 'checkbox',
       '#title' => t('Reindex Item on Flagged action'),
       '#default_value' => $chosen_conf->get('reindex_on_flagging'),
-      '#description' => t('Reindex item each time it is flagged/unflagged.'),
+      '#description' => t('Enable or disable reindexing items on flagging action.'),
     );
 
     $form['submit'] = array(
