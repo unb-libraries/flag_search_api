@@ -4,4 +4,4 @@ flag_search_api.admin:
     _form: '\Drupal\flag_search_api\Form\FlagSearchApiConfigForm'
     _title: 'Flag Search API'
   requirements:
-    _permission: 'administer site configuration'
+    _permission: 'administer search_api'
