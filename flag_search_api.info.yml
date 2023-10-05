@@ -1,7 +1,6 @@
 name: Flag Search API
 description: 'Search API support for flag module.'
-core: 8.x
-core_version_requirement: ^8 || ^9
+core_version_requirement: ^8 || ^9 || ^10
 type: module
 package: Search
 configure: flag_search_api.admin
