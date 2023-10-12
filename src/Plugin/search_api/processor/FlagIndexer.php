@@ -143,6 +143,7 @@ class FlagIndexer extends ProcessorPluginBase implements PluginFormInterface, Co
         'label' => $label,
         'description' => $label,
         'type' => 'integer',
+        'is_list' => TRUE,
         'processor_id' => $this->getPluginId(),
       );
     }
